@@ -23,10 +23,11 @@ alltraps:
   # Return falls through to trapret...
 .globl trapret
 trapret:
-  popal
+  popal # pop all general-purpose registers
   popl %gs
   popl %fs
   popl %es
   popl %ds
   addl $0x8, %esp  # trapno and errcode
+  # struct trapframeにおける、eipの部分までpop完了、iretはeipだけでなく、その下の cs などもpopする
   iret

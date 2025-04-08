@@ -39,9 +39,9 @@ walkpgdir(pde_t *pgdir, const void *va, int alloc)
   pte_t *pgtab;
 
   pde = &pgdir[PDX(va)];
-  if(*pde & PTE_P){
+  if(*pde & PTE_P){ // page directory entryがある
     pgtab = (pte_t*)P2V(PTE_ADDR(*pde));
-  } else {
+  } else { // ない
     if(!alloc || (pgtab = (pte_t*)kalloc()) == 0)
       return 0;
     // Make sure all those PTE_P bits are zero.
@@ -63,9 +63,12 @@ mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
   char *a, *last;
   pte_t *pte;
 
+  // page align
   a = (char*)PGROUNDDOWN((uint)va);
+  // page align
   last = (char*)PGROUNDDOWN(((uint)va) + size - 1);
   for(;;){
+    // virtual address: aに対するpage table entryを取得
     if((pte = walkpgdir(pgdir, a, 1)) == 0)
       return -1;
     if(*pte & PTE_P)
@@ -140,6 +143,7 @@ setupkvm(void)
 void
 kvmalloc(void)
 {
+  // kernelのmappingを作る
   kpgdir = setupkvm();
   switchkvm();
 }
@@ -188,7 +192,7 @@ inituvm(pde_t *pgdir, char *init, uint sz)
     panic("inituvm: more than a page");
   mem = kalloc();
   memset(mem, 0, PGSIZE);
-  mappages(pgdir, 0, PGSIZE, V2P(mem), PTE_W|PTE_U);
+  mappages(pgdir, 0, PGSIZE, V2P(mem), PTE_W|PTE_U); // PTE_U: つまりユーザー空間のメモリ
   memmove(mem, init, sz);
 }
 

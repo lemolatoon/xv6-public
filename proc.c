@@ -123,11 +123,15 @@ userinit(void)
   struct proc *p;
   extern char _binary_initcode_start[], _binary_initcode_size[];
 
+  // ptableから空いてるところを取ってくる
   p = allocproc();
   
   initproc = p;
+  // 全CPUで共通のpagetableを設定する。特に、カーネル空間のマッピングの設定。
   if((p->pgdir = setupkvm()) == 0)
     panic("userinit: out of memory?");
+  // initプロセス特有の設定。initプロセスはカーネルのバイナリに埋め込まれている。1ページだけkallocして、それをVirtual Address 0..PGSIZEにマッピングする。
+  // つまり、initプロセスのサイズはPGSIZE以下。
   inituvm(p->pgdir, _binary_initcode_start, (int)_binary_initcode_size);
   p->sz = PGSIZE;
   memset(p->tf, 0, sizeof(*p->tf));
@@ -136,7 +140,7 @@ userinit(void)
   p->tf->es = p->tf->ds;
   p->tf->ss = p->tf->ds;
   p->tf->eflags = FL_IF;
-  p->tf->esp = PGSIZE;
+  p->tf->esp = PGSIZE; // 今回はinitプロセスのサイズはPGSIZE以下なので、スタックポインタをPGSIZEにしておけば、最大限スタックを使える。
   p->tf->eip = 0;  // beginning of initcode.S
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
@@ -340,9 +344,11 @@ scheduler(void)
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
       c->proc = p;
-      switchuvm(p);
+      switchuvm(p); // まずは、ページテーブルをこのプロセスに設定されたものに変更する。
       p->state = RUNNING;
 
+      // c->schedulerという特別なcontextにとりあえず、現在のcontextをsaveして、p->contextに切り替える。
+      // もし、これがプロセスの一番はじめの実行であれば、allocprocでセットしたp->context->eipであるforkretに切り替わる。
       swtch(&(c->scheduler), p->context);
       switchkvm();
 
