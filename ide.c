@@ -40,6 +40,7 @@ idewait(int checkerr)
 {
   int r;
 
+  // IO/Port 0x1f7 (status bits)におけるBUSYがclearされ、READYな状態になるまで待つ
   while(((r = inb(0x1f7)) & (IDE_BSY|IDE_DRDY)) != IDE_DRDY)
     ;
   if(checkerr && (r & (IDE_DF|IDE_ERR)) != 0)
@@ -53,12 +54,12 @@ ideinit(void)
   int i;
 
   initlock(&idelock, "ide");
-  ioapicenable(IRQ_IDE, ncpu - 1);
+  ioapicenable(IRQ_IDE, ncpu - 1); // IRQ_IDEへのinterruptを`ncpu - 1`向きにセットして有効化する
   idewait(0);
 
   // Check if disk 1 is present
-  outb(0x1f6, 0xe0 | (1<<4));
-  for(i=0; i<1000; i++){
+  outb(0x1f6, 0xe0 | (1<<4)); // select disk 1
+  for(i=0; i<1000; i++){ // wait until disk 1 is ready
     if(inb(0x1f7) != 0){
       havedisk1 = 1;
       break;
@@ -93,6 +94,7 @@ idestart(struct buf *b)
   outb(0x1f6, 0xe0 | ((b->dev&1)<<4) | ((sector>>24)&0x0f));
   if(b->flags & B_DIRTY){
     outb(0x1f7, write_cmd);
+    // bufferのデータをhardwareに移す
     outsl(0x1f0, b->data, BSIZE/4);
   } else {
     outb(0x1f7, read_cmd);
@@ -141,7 +143,7 @@ iderw(struct buf *b)
 
   if(!holdingsleep(&b->lock))
     panic("iderw: buf not locked");
-  if((b->flags & (B_VALID|B_DIRTY)) == B_VALID)
+  if((b->flags & (B_VALID|B_DIRTY)) == B_VALID) // すでに読んであるし、書き込まれてもない
     panic("iderw: nothing to do");
   if(b->dev != 0 && !havedisk1)
     panic("iderw: ide disk 1 not present");
@@ -152,15 +154,15 @@ iderw(struct buf *b)
   b->qnext = 0;
   for(pp=&idequeue; *pp; pp=&(*pp)->qnext)  //DOC:insert-queue
     ;
-  *pp = b;
+  *pp = b; // この時点で、ppは、queueの一番最後のnullポインタを指している。
 
   // Start disk if necessary.
   if(idequeue == b)
-    idestart(b);
+    idestart(b); // もしbがqueueの先頭なら、リクエストを開始する
 
   // Wait for request to finish.
   while((b->flags & (B_VALID|B_DIRTY)) != B_VALID){
-    sleep(b, &idelock);
+    sleep(b, &idelock); // 一旦他のプロセスに実行を譲って、interruptが来るまで待つ
   }
 
 

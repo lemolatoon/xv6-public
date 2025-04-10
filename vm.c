@@ -168,10 +168,12 @@ switchuvm(struct proc *p)
     panic("switchuvm: no pgdir");
 
   pushcli();
+  // gdt自体は、seginitですでに、CPUにsegment descriptorとして記録済み
   mycpu()->gdt[SEG_TSS] = SEG16(STS_T32A, &mycpu()->ts,
                                 sizeof(mycpu()->ts)-1, 0);
   mycpu()->gdt[SEG_TSS].s = 0;
   mycpu()->ts.ss0 = SEG_KDATA << 3;
+  // task segmenet descriptorにカーネルスタックのtopを記録。interruptのときに、権限をまたいだらこれが使われる。
   mycpu()->ts.esp0 = (uint)p->kstack + KSTACKSIZE;
   // setting IOPL=0 in eflags *and* iomb beyond the tss segment limit
   // forbids I/O instructions (e.g., inb and outb) from user space

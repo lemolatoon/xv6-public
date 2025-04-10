@@ -19,6 +19,7 @@ fetchint(uint addr, int *ip)
 {
   struct proc *curproc = myproc();
 
+  // 本当にprocのユーザー空間のアドレスかどうかチェック
   if(addr >= curproc->sz || addr+4 > curproc->sz)
     return -1;
   *ip = *(int*)(addr);
@@ -134,6 +135,7 @@ syscall(void)
   int num;
   struct proc *curproc = myproc();
 
+  // alltrapsで保存されたeax
   num = curproc->tf->eax;
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
     curproc->tf->eax = syscalls[num]();

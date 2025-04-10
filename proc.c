@@ -442,7 +442,7 @@ sleep(void *chan, struct spinlock *lk)
     release(lk);
   }
   // Go to sleep.
-  p->chan = chan;
+  p->chan = chan; // 後々`void *chan`で起こす
   p->state = SLEEPING;
 
   sched();

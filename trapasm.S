@@ -30,4 +30,5 @@ trapret:
   popl %ds
   addl $0x8, %esp  # trapno and errcode
   # struct trapframeにおける、eipの部分までpop完了、iretはeipだけでなく、その下の cs などもpopする
+  # CPUは、csをrestoreしたときに、カーネルモードから来ているものなら、%espと%ssはpopせず進む
   iret
