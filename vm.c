@@ -268,8 +268,8 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
   a = PGROUNDUP(newsz);
   for(; a  < oldsz; a += PGSIZE){
     pte = walkpgdir(pgdir, (char*)a, 0);
-    if(!pte)
-      a = PGADDR(PDX(a) + 1, 0, 0) - PGSIZE;
+    if(!pte) // page directory entryすらないとき、次のpage directory entryに該当するアドレスにaを設定
+      a = PGADDR(PDX(a) + 1, 0, 0) - PGSIZE; // - PGSIZEは、for文の最後で+PAGESIZEされる分を相殺するため
     else if((*pte & PTE_P) != 0){
       pa = PTE_ADDR(*pte);
       if(pa == 0)

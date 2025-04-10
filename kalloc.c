@@ -33,6 +33,7 @@ kinit1(void *vstart, void *vend)
 {
   initlock(&kmem.lock, "kmem");
   kmem.use_lock = 0;
+  // とりあえず、カーネルの終わりから、4MB分を4KBずつに区切って、freeなpageとする
   freerange(vstart, vend);
 }
 
